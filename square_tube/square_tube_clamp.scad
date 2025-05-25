@@ -100,6 +100,7 @@ module square_tube_clamp_head(
     bt = 3, // body thickness of the clamp
     ww = 9, // clamp "wing" width
     wt = 6, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
+    ss = screw_info("M4,4", head="pan"), // screw specification (as returned by `BOSL2::screw_info()`
     clamp_dilat = 1, // dilataion between the head and nut clamp halves
     tol = 2 // tolerance (margin by which the clamp exceeds the tube profile)
 ) {
@@ -119,10 +120,10 @@ module square_tube_clamp_head(
             diff()
                 cuboid([wt-clamp_dilat/2,body_width+2*ww,l], rounding=2, anchor=RIGHT)
                 attach(LEFT) {
-                    fwd( screw_z) right(screw_y) screw_hole("M4x1,4",head="socket",counterbore=true,head_oversize=1.5,anchor="top");
-                    fwd( screw_z) left( screw_y) screw_hole("M4x1,4",head="socket",counterbore=true,head_oversize=1.5,anchor="top");
-                    back(screw_z) right(screw_y) screw_hole("M4x1,4",head="socket",counterbore=true,head_oversize=1.5,anchor="top");
-                    back(screw_z) left( screw_y) screw_hole("M4x1,4",head="socket",counterbore=true,head_oversize=1.5,anchor="top");
+                    fwd( screw_z) right(screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
+                    fwd( screw_z) left( screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
+                    back(screw_z) right(screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
+                    back(screw_z) left( screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
                 }
         }
         color("Red") {
@@ -217,20 +218,19 @@ module all_assembly(
     }
 }
 
-diam=15;
-len=30;
-tol=1;
-dil=2;
-
 //projection(cut=true) xrot(-90) {
 //assembly_screw_and_nut(diam, len);
 //}
 
-// assembly
-difference() {
-all_assembly(d=diam, l=len, dil=dil, tol=tol);
-fwd(diam/2+get_screw_y(d=diam, l=len)) cuboid([2*diam,diam,2*len]);
-}
+
+diam=15;
+len=30;
+tol=1;
+dil=2;
+ww=11.5;
+
+square_tube_clamp_head(d=diam, l=len, clamp_dilat=dil, tol=tol, ww=ww);
+xflip() square_tube_clamp_nut(d=diam, l=len, clamp_dilat=dil, tol=tol, ww=ww);
 
 //diff()
 //cuboid([6,20,100],anchor=RIGHT)
