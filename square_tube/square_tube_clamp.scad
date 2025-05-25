@@ -15,6 +15,7 @@
 include <BOSL2/std.scad>
 include <BOSL2/screws.scad>
 include <BOSL2/structs.scad>
+include <BOSL2/vnf.scad>
 
 $fn=32;
 
@@ -367,36 +368,98 @@ tol=1;
 dil=2;
 ww=11.5;
 
-square_tube_clamp_head(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
-xflip() square_tube_clamp_nut(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
 
-//diff()
-//cuboid([6,20,100],anchor=RIGHT)
-//attach(LEFT)
-//color("Red") { up(1) zrot(30) nut_trap_inline(4,"M4", $slop=.5, orient=BOT); }
-
-//screw_hole("M4",length=10,head="none",anchor=BOT)
-//attach(TOP)
-//color("Green") { screw_hole("M4",length=10,head="none",head_oversize=1.5,anchor=BOT); }
-
-//            difference() {
-//                cuboid([5,10,100], rounding=2, anchor=RIGHT);
-//down(10) cylinder(h=100, d=2, orient=LEFT);
-//}
+module simple_joint_head(
+    jc, // joint "connect" diameter
+    jh, // joint "head" diameter
+    jw, // joint "head" width
+    jt, // joint "wall" thickness
+    tol = 0.5 // joint tolerance
+) {
+    cyl(h=jt+tol, d=jc, anchor=BOTTOM)
+    attach(TOP)
+    color("Red") { yscale(0.5) cyl(h=jw, d=jh, rounding=0.2, anchor=BOTTOM); };
+}
 
 
-// Example of working with structures
-// ==================================
+module simple_joint_socket(
+    jc, // joint "connect" diameter
+    jh, // joint "head" diameter
+    jw, // joint "head" width
+    jt, // joint "wall" thickness
+    tol = 0.5 // joint tolerance
+) {
+    w = jh + 2*tol + 2*jt;
+    z = jw+tol+jt;
 
-echo("----------------------");
-ci = clamp_info(d=diam, l=len);
-echo("Clamp info: ", ci);
-echo_struct(ci);
+    difference() {
+        //cuboid([w, w, z], anchor=BOTTOM);
+        cyl(d=w, h=z, anchor=BOTTOM);
+        up(jw+tol/2) cyl(h=jt+tol, d=jc+tol, anchor=BOTTOM);
+        down(tol/2) cyl(h=z+tol-jt, d=jh+tol, anchor=BOTTOM);
+        color("Blue") { up(jw+tol/2) left(w/4+tol/2) cuboid([w/2+tol, jc+tol, jt+tol], anchor=BOTTOM); }
+        color("Red") { down(tol) left(w/4+tol/2) cuboid([w/2+tol, jh/2+tol, z-jt+tol], anchor=BOTTOM); }
+    }
+}
 
-cc = struct_set([], ["length", 11]);
-//cc = clamp_info(ci=ci);
-echo("screw_y=", get_screw_y(d=diam, l=len) );
-echo("----------------------");
+// // Joint Assembly
+// // ==============
+// simple_joint_socket(jc=4, jh=12, jw=3, jt=3);
+// left(0)
+// zrot(45) up(7) yrot(180) simple_joint_head(jc=4, jh=12, jw=3, jt=3);
+
+ci = clamp_info(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
+bd = get_body_depth(ci=ci);
+
+yrot(90) union() {
+difference() {
+square_tube_clamp_nut(ci=ci);
+left(.1) yrot(-90) cyl(d=12.5, h=bd, anchor=BOTTOM);
+}
+left(bd) yrot(-90) simple_joint_socket(jc=4, jh=12, jw=3, jt=3);
+
+fwd(50)
+union() {
+square_tube_clamp_nut(ci=ci);
+left(bd) yrot(-90) simple_joint_head(jc=4, jh=12, jw=3, jt=3);
+}
+}
+
+// // Clamp Structure
+// // ===============
+// square_tube_clamp_head(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
+// xflip() square_tube_clamp_nut(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
+
+
+// // Experiments
+// // ===========
+// diff()
+// cuboid([6,20,100],anchor=RIGHT)
+// attach(LEFT)
+// color("Red") { up(1) zrot(30) nut_trap_inline(4,"M4", $slop=.5, orient=BOT); }
+
+// screw_hole("M4",length=10,head="none",anchor=BOT)
+// attach(TOP)
+// color("Green") { screw_hole("M4",length=10,head="none",head_oversize=1.5,anchor=BOT); }
+
+//             difference() {
+//                 cuboid([5,10,100], rounding=2, anchor=RIGHT);
+// down(10) cylinder(h=100, d=2, orient=LEFT);
+// }
+
+
+// // Example of working with structures
+// // ==================================
+// 
+// echo("----------------------");
+// ci = clamp_info(d=diam, l=len);
+// echo("Clamp info: ", ci);
+// echo_struct(ci);
+// 
+// cc = struct_set([], ["length", 11]);
+// //cc = clamp_info(ci=ci);
+// echo("screw_y=", get_screw_y(d=diam, l=len) );
+// echo("----------------------");
 
 
 // vim: expandtab tabstop=4 shiftwidth=4 softtabstop=4 nowrap
