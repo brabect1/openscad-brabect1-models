@@ -93,14 +93,6 @@ function get_screw_z(
     ) 
     struct_val(ci, "length")/2-6;
 
-//TODO:remove    d, // diameter
-//TODO:remove    l, // length
-//TODO:remove    bt = 3, // body thickness of the clamp
-//TODO:remove    ww = 9, // clamp "wing" width
-//TODO:remove    wt = 6, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
-//TODO:remove    clamp_dilat = 1, // dilataion between the head and nut clamp halves
-//TODO:remove    tol = 2 // tolerance (margin by which the clamp exceeds the tube profile)
-//TODO:remove) = l/2-6;
 
 
 function get_screw_y(
@@ -119,32 +111,12 @@ function get_screw_y(
     ) 
     (get_body_width(ci) + struct_val(ci, "wwidth"))/2;
     
-//TODO:remove    d, // diameter
-//TODO:remove    l, // length
-//TODO:remove    bt = 3, // body thickness of the clamp
-//TODO:remove    ww = 9, // clamp "wing" width
-//TODO:remove    wt = 6, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
-//TODO:remove    clamp_dilat = 1, // dilataion between the head and nut clamp halves
-//TODO:remove    tol = 2 // tolerance (margin by which the clamp exceeds the tube profile)
-//TODO:remove) = 
-//TODO:remove    let(
-//TODO:remove        r = d/2.0,
-//TODO:remove        body_thick = bt,
-//TODO:remove        body_width = d+tol+2*body_thick,
-//TODO:remove        body_depth = r+tol/2+body_thick
-//TODO:remove    ) 
-//TODO:remove    (body_width+ww)/2;
 
 
-module square_tube_clamp_nut(
-//TODO:remove    d, // diameter
-//TODO:remove    l, // length
-//TODO:remove    bt = 3, // body thickness of the clamp
-//TODO:remove    ww = 9, // clamp "wing" width
-//TODO:remove    wt = 6, // clamp "wing" thickness (this is the thickness just for the clamp half being construed),
-//TODO:remove    ss = screw_info("M4,4"), // screw specification (as returned by `BOSL2::screw_info()`
-//TODO:remove    clamp_dilat = 1, // dilataion between the head and nut clamp halves
-//TODO:remove    tol = 2 // tolerance (margin by which the clamp exceeds the tube profile)
+// Creates a clamp half with a screw hole and a combined opening for both head and nut.
+// This clamp representation ought to be most universal (compared to `square_tube_clamp_head`
+// and `square_tube_clamp_nut`, which are complement to each other).
+module square_tube_clamp_head_and_nut(
     ci, // clamp info
     d, // diameter
     l, // length
@@ -174,7 +146,64 @@ module square_tube_clamp_nut(
 
     screw_y = get_screw_y(ci);
     screw_z = get_screw_z(ci);
-//TODO:remove    screw_z = l/2-6;
+
+    left(dilat/2)
+    difference() {
+        union() {
+            cuboid([body_depth-dilat/2,body_width,l], rounding=2, anchor=RIGHT);
+            diff()
+                cuboid([wt-dilat/2,body_width+2*ww,l], rounding=2, anchor=RIGHT)
+                attach(LEFT) {
+                    fwd( screw_z) right(screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    fwd( screw_z) left( screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    back(screw_z) right(screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    back(screw_z) left( screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    fwd( screw_z) right(screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                    fwd( screw_z) left( screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                    back(screw_z) right(screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                    back(screw_z) left( screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                }
+        }
+        color("Red") {
+        fwd( screw_y) right(1) cylinder(h=wt+1, d=2, orient=LEFT);
+        back(screw_y) right(1) cylinder(h=wt+1, d=2, orient=LEFT);
+        }
+        right(1) cuboid([r+tol/2+1-dilat/2,d+tol,l+1], anchor=RIGHT);
+    }
+}
+
+
+// Creates a clamp half with a screw hole and a screw nut opening (a.k.a. nut trap).
+module square_tube_clamp_nut(
+    ci, // clamp info
+    d, // diameter
+    l, // length
+    bt, // body thickness of the clamp
+    ww, // clamp "wing" width
+    wt, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
+    ss, // screw_info specification
+    dilat, // dilataion between the head and nut clamp halves
+    tol // tolerance (margin by which the clamp exceeds the tube profile)
+) {
+    ci = clamp_info(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+
+    // redefine module parameters
+    l = struct_val(ci, "length");
+    d = struct_val(ci, "diameter");
+    bt = struct_val(ci, "bthick");
+    ww = struct_val(ci, "wwidth");
+    wt = struct_val(ci, "wthick");
+    ss = struct_val(ci, "screw_info");
+    dilat = struct_val(ci, "dilat");
+    tol = struct_val(ci, "tolerance");
+
+    r = d/2.0; // "radius" (i.e. half of the square tube edge length)
+
+    body_width = get_body_width(ci);
+    body_depth = get_body_depth(ci);
+
+    screw_y = get_screw_y(ci);
+    screw_z = get_screw_z(ci);
 
     left(dilat/2)
     difference() {
@@ -189,10 +218,10 @@ module square_tube_clamp_nut(
                     back(screw_z) right(screw_y) screw_hole(ss, length=wt+1, head="none", anchor=TOP);
                     back(screw_z) left( screw_y) screw_hole(ss, length=wt+1, head="none", anchor=TOP);
                     }
-                    fwd( screw_z) right(screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.5, anchor=TOP);
-                    fwd( screw_z) left( screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.5, anchor=TOP);
-                    back(screw_z) right(screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.5, anchor=TOP);
-                    back(screw_z) left( screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.5, anchor=TOP);
+                    fwd( screw_z) right(screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                    fwd( screw_z) left( screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                    back(screw_z) right(screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
+                    back(screw_z) left( screw_y) up(1) zrot(30) nut_trap_inline(wt/2+1,ss, $slop=.1, anchor=TOP);
                 }
         }
         color("Red") {
@@ -204,16 +233,8 @@ module square_tube_clamp_nut(
 }
 
 
+// Creates a clamp half with a screw hole and a screw head opening.
 module square_tube_clamp_head(
-//TODO:remove    d, // diameter
-//TODO:remove    l, // length
-//TODO:remove    bt = 3, // body thickness of the clamp
-//TODO:remove    ww = 9, // clamp "wing" width
-//TODO:remove    wt = 6, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
-//TODO:remove    ss = screw_info("M4,4", head="pan"), // screw specification (as returned by `BOSL2::screw_info()`
-//TODO:remove    dilat = 1, // dilataion between the head and nut clamp halves
-//TODO:remove    tol = 2 // tolerance (margin by which the clamp exceeds the tube profile)
-//TODO:remove) {
     ci, // clamp info
     d, // diameter
     l, // length
@@ -243,14 +264,6 @@ module square_tube_clamp_head(
 
     screw_y = get_screw_y(ci);
     screw_z = get_screw_z(ci);
-//TODO:remove    r = d/2.0; // "radius" (i.e. half of the square tube edge length)
-//TODO:remove
-//TODO:remove    body_thick = bt;
-//TODO:remove    body_width = d+tol+2*body_thick;
-//TODO:remove    body_depth = r+tol/2+body_thick;
-//TODO:remove
-//TODO:remove    screw_y = (body_width+ww)/2;
-//TODO:remove    screw_z = l/2-6;
 
     left(dilat/2)
     difference() {
@@ -259,10 +272,10 @@ module square_tube_clamp_head(
             diff()
                 cuboid([wt-dilat/2,body_width+2*ww,l], rounding=2, anchor=RIGHT)
                 attach(LEFT) {
-                    fwd( screw_z) right(screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
-                    fwd( screw_z) left( screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
-                    back(screw_z) right(screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
-                    back(screw_z) left( screw_y) down(2) screw_hole(ss,counterbore=true,head_oversize=1.5,anchor="head_bot");
+                    fwd( screw_z) right(screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    fwd( screw_z) left( screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    back(screw_z) right(screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
+                    back(screw_z) left( screw_y) down(1.5) screw_hole(ss,length=wt+1,counterbore=true,head_oversize=0.5,anchor="head_bot");
                 }
         }
         color("Red") {
@@ -274,6 +287,7 @@ module square_tube_clamp_head(
 }
 
 
+// Creates a screw and nut assembly.
 module assembly_screw_and_nut(
     d, // diameter
     l, // length
@@ -289,6 +303,8 @@ module assembly_screw_and_nut(
 }
 
 
+// Creates the tube profile and screws and nuts to complete the visualization
+// of the entire clamp.
 module assembly_project_comps(
     d, // diameter
     l, // length
@@ -306,8 +322,10 @@ module assembly_project_comps(
     screw_y = (body_width+ww)/2;
     screw_z = l/2-6;
 
+    // instantiate the square tube
     cuboid([d, d, l+10]);
 
+    // instantiate 4x screw+nut
     up(  screw_z) fwd( screw_y) rot(90,v=[0,-1,0]) assembly_screw_and_nut(d,l,bt,ww,wt,tol);
     down(screw_z) fwd( screw_y) rot(90,v=[0,-1,0]) assembly_screw_and_nut(d,l,bt,ww,wt,tol);
     up(  screw_z) back(screw_y) rot(90,v=[0,-1,0]) assembly_screw_and_nut(d,l,bt,ww,wt,tol);
