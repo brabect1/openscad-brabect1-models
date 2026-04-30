@@ -116,7 +116,7 @@ function get_screw_y(
 // Creates a clamp half with a screw hole and a combined opening for both head and nut.
 // This clamp representation ought to be most universal (compared to `square_tube_clamp_head`
 // and `square_tube_clamp_nut`, which are complement to each other).
-module square_tube_clamp_head_and_nut(
+module square_tube_clamp_uni(
     ci, // clamp info
     d, // diameter
     l, // length
@@ -287,6 +287,29 @@ module square_tube_clamp_head(
 }
 
 
+// Wrapper for clamps with different types of screw openings.
+module square_tube_clamp(
+    type, // clamp type: "nut", "head", "uni"
+    ci, // clamp info
+    d, // diameter
+    l, // length
+    bt, // body thickness of the clamp
+    ww, // clamp "wing" width
+    wt, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
+    ss, // screw_info specification
+    dilat, // dilataion between the head and nut clamp halves
+    tol // tolerance (margin by which the clamp exceeds the tube profile)
+) {
+    if (type == "nut") {
+        square_tube_clamp_nut(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+    } else if (type == "head") {
+        square_tube_clamp_head(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+    } else {
+        square_tube_clamp_uni(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+    }
+}
+
+
 // Creates a screw and nut assembly.
 module assembly_screw_and_nut(
     d, // diameter
@@ -429,17 +452,28 @@ module simple_joint_socket(
 ci = clamp_info(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
 bd = get_body_depth(ci=ci);
 
+jc = 6; // joint connect diameter
+jh = 16; // joint header diameter
+jw = 3; // joint head width
+jt = 3; // joint wall thickness
+jtol = 0.5; // joint tolerance
+
 yrot(90) union() {
 difference() {
-square_tube_clamp_nut(ci=ci);
-left(.1) yrot(-90) cyl(d=12.5, h=bd, anchor=BOTTOM);
+square_tube_clamp(type="uni",ci=ci);
+left(-.05 + bd - struct_val(ci, "bthick")) yrot(-90) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
 }
-left(bd) yrot(-90) simple_joint_socket(jc=4, jh=12, jw=3, jt=3);
+left(bd) yrot(-90) simple_joint_socket(jc=jc, jh=jh, jw=jw, jt=jt, tol=jtol);
+color("Red") {left(bd - struct_val(ci, "bthick")) yrot(-90)  difference() {
+cyl(d=jh + 2*jtol + 2*jt, h=struct_val(ci, "bthick"), anchor=BOTTOM);
+down(0.05) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
+}
+}
 
-fwd(50)
+fwd(2*get_body_width(ci=ci))
 union() {
-square_tube_clamp_nut(ci=ci);
-left(bd) yrot(-90) simple_joint_head(jc=4, jh=12, jw=3, jt=3);
+square_tube_clamp(type="uni", ci=ci);
+left(bd) yrot(-90) simple_joint_head(jc=jc, jh=jh, jw=jw, jt=jt, tol=jtol);
 }
 }
 
