@@ -77,6 +77,23 @@ function get_body_depth(
     (struct_val(ci, "diameter") + struct_val(ci, "tolerance"))/2.0 + struct_val(ci, "bthick");
 
 
+function get_clamp_width(
+    ci, // clamp info
+    d, // diameter
+    l, // length
+    bt, // body thickness of the clamp
+    ww, // clamp "wing" width
+    wt, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
+    ss, // screw_info specification
+    dilat, // dilataion between the head and nut clamp halves
+    tol // tolerance (margin by which the clamp exceeds the tube profile)
+) = 
+    let(
+        ci = clamp_info(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol)
+    )
+    2 * struct_val(ci, "wwidth") + get_body_width(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+
+
 function get_screw_z(
     ci, // clamp info
     d, // diameter
