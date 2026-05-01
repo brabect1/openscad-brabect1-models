@@ -287,10 +287,30 @@ module square_tube_clamp_head(
 }
 
 
+// Creates a "clamp_joint_info" structure.
+function clamp_joint_info(
+    jc, // joint "connect" diameter
+    jh, // joint "head" diameter
+    jw, // joint "head" thickness
+    jt, // joint "wall" thickness
+    jtol, // joint tolerance
+    cji // default clamp info structure
+) = let(
+        cji = is_undef(cji) ? struct_set([], ["cdiam", 6, "hdiam", 16, "hthick", 3, "wthick", 3, "tolerance", 0.5]) : cji,
+        jc = is_undef(jc) ? struct_val(cji, "cdiam") : jc,
+        jh = is_undef(jh) ? struct_val(cji, "hdiam") : jh,
+        jw = is_undef(jw) ? struct_val(cji, "hthick") : jw,
+        jt = is_undef(jt) ? struct_val(cji, "wthick") : jt,
+        jtol = is_undef(jtol) ? struct_val(cji, "tolerance") : jtol
+    ) struct_set([], ["cdiam", jc, "hdiam", jh, "hthick", jw, "wthick", jt, "tolerance", jtol], grow=true);
+
+
 // Wrapper for clamps with different types of screw openings.
 module square_tube_clamp(
-    type, // clamp type: "nut", "head", "uni"
+    clamptype, // clamp type: "nut", "head", (default) "uni"
+    jointtype, // joint type: "socket", "head", (default) "none"
     ci, // clamp info
+    cji, // clamp joint info
     d, // diameter
     l, // length
     bt, // body thickness of the clamp
@@ -300,12 +320,60 @@ module square_tube_clamp(
     dilat, // dilataion between the head and nut clamp halves
     tol // tolerance (margin by which the clamp exceeds the tube profile)
 ) {
-    if (type == "nut") {
-        square_tube_clamp_nut(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
-    } else if (type == "head") {
-        square_tube_clamp_head(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
-    } else {
-        square_tube_clamp_uni(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+
+    // redefine module parameters (to make sure they are all defined and usable)
+    ci = clamp_info(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+    l = struct_val(ci, "length");
+    d = struct_val(ci, "diameter");
+    bt = struct_val(ci, "bthick"); // clamp body thickness
+    ww = struct_val(ci, "wwidth");
+    wt = struct_val(ci, "wthick");
+    ss = struct_val(ci, "screw_info");
+    dilat = struct_val(ci, "dilat");
+    tol = struct_val(ci, "tolerance");
+    cji = clamp_joint_info(cji=cji);
+
+    // define extra local variables
+    r = d/2.0; // "radius" (i.e. half of the square tube edge length)
+    bw = get_body_width(ci); // computed clamp body width
+    bd = get_body_depth(ci); // computed clamp body depth
+
+    jc = struct_val(cji, "cdiam");
+    jh = struct_val(cji, "hdiam");
+    jw = struct_val(cji, "hthick");
+    jt = struct_val(cji, "wthick");
+    jtol = struct_val(cji, "tolerance");
+
+    // union of the clamp half with the joint
+    union() {
+
+        // difference of the clamp half with conditional cylinder below a joint socket
+        difference() {
+            // create the clamp "half" of the selected srew opening
+            if (clamptype == "nut") {
+                square_tube_clamp_nut(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+            } else if (clamptype == "head") {
+                square_tube_clamp_head(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+            } else {
+                square_tube_clamp_uni(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+            }
+
+            if (jointtype == "socket") {
+                left(-.05 + bd - bt) yrot(-90) cyl(d=jh+jtol, h=bt+0.1, anchor=BOTTOM);
+            }
+        }
+
+        if (jointtype == "head") {
+            left(bd) yrot(-90) simple_joint_head(cji=cji);
+        } else if (jointtype == "socket") {
+            left(bd) yrot(-90) simple_joint_socket(cji=cji);
+            color("Red") {
+                left(bd - struct_val(ci, "bthick")) yrot(-90)  difference() {
+                    cyl(d=jh + 2*jtol + 2*jt, h=struct_val(ci, "bthick"), anchor=BOTTOM);
+                    down(0.05) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
+                }
+            }
+        }
     }
 }
 
@@ -411,35 +479,53 @@ ww=11.5;
 
 
 module simple_joint_head(
+    cji, // clamp joint info
     jc, // joint "connect" diameter
     jh, // joint "head" diameter
     jw, // joint "head" width
     jt, // joint "wall" thickness
     tol = 0.5 // joint tolerance
 ) {
-    cyl(h=jt+tol, d=jc, anchor=BOTTOM)
+    cji = clamp_joint_info(cji=cji, jc=jc, jh=jh, jw=jw, jt=jt, jtol=tol);
+
+    jc = struct_val(cji, "cdiam");
+    jh = struct_val(cji, "hdiam");
+    jw = struct_val(cji, "hthick");
+    jt = struct_val(cji, "wthick");
+    jtol = struct_val(cji, "tolerance");
+
+    cyl(h=jt+jtol, d=jc, anchor=BOTTOM)
     attach(TOP)
     color("Red") { yscale(0.5) cyl(h=jw, d=jh, rounding=0.2, anchor=BOTTOM); };
 }
 
 
 module simple_joint_socket(
+    cji, // clamp joint info
     jc, // joint "connect" diameter
     jh, // joint "head" diameter
     jw, // joint "head" width
     jt, // joint "wall" thickness
     tol = 0.5 // joint tolerance
 ) {
-    w = jh + 2*tol + 2*jt;
-    z = jw+tol+jt;
+    cji = clamp_joint_info(cji=cji, jc=jc, jh=jh, jw=jw, jt=jt, jtol=tol);
+
+    jc = struct_val(cji, "cdiam");
+    jh = struct_val(cji, "hdiam");
+    jw = struct_val(cji, "hthick");
+    jt = struct_val(cji, "wthick");
+    jtol = struct_val(cji, "tolerance");
+
+    w = jh + 2*jtol + 2*jt;
+    z = jw+jtol+jt;
 
     difference() {
         //cuboid([w, w, z], anchor=BOTTOM);
         cyl(d=w, h=z, anchor=BOTTOM);
-        up(jw+tol/2) cyl(h=jt+tol, d=jc+tol, anchor=BOTTOM);
-        down(tol/2) cyl(h=z+tol-jt, d=jh+tol, anchor=BOTTOM);
-        color("Blue") { up(jw+tol/2) left(w/4+tol/2) cuboid([w/2+tol, jc+tol, jt+tol], anchor=BOTTOM); }
-        color("Red") { down(tol) left(w/4+tol/2) cuboid([w/2+tol, jh/2+tol, z-jt+tol], anchor=BOTTOM); }
+        up(jw+jtol/2) cyl(h=jt+jtol, d=jc+jtol, anchor=BOTTOM);
+        down(jtol/2) cyl(h=z+jtol-jt, d=jh+jtol, anchor=BOTTOM);
+        color("Blue") { up(jw+jtol/2) left(w/4+jtol/2) cuboid([w/2+jtol, jc+jtol, jt+jtol], anchor=BOTTOM); }
+        color("Red") { down(jtol) left(w/4+jtol/2) cuboid([w/2+jtol, jh/2+jtol, z-jt+jtol], anchor=BOTTOM); }
     }
 }
 
@@ -457,25 +543,30 @@ jh = 16; // joint header diameter
 jw = 3; // joint head width
 jt = 3; // joint wall thickness
 jtol = 0.5; // joint tolerance
+cji = clamp_joint_info(jc=jc, jh=jh, jw=jw, jt=jt, jtol=jtol);
 
 yrot(90) union() {
-difference() {
-square_tube_clamp(type="uni",ci=ci);
-left(-.05 + bd - struct_val(ci, "bthick")) yrot(-90) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
-}
-left(bd) yrot(-90) simple_joint_socket(jc=jc, jh=jh, jw=jw, jt=jt, tol=jtol);
-color("Red") {left(bd - struct_val(ci, "bthick")) yrot(-90)  difference() {
-cyl(d=jh + 2*jtol + 2*jt, h=struct_val(ci, "bthick"), anchor=BOTTOM);
-down(0.05) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
-}
+square_tube_clamp(clamptype="uni", jointtype="socket", ci=ci, cji=cji);
 }
 
-fwd(2*get_body_width(ci=ci))
-union() {
-square_tube_clamp(type="uni", ci=ci);
-left(bd) yrot(-90) simple_joint_head(jc=jc, jh=jh, jw=jw, jt=jt, tol=jtol);
-}
-}
+//yrot(90) union() {
+//difference() {
+//square_tube_clamp(clamptype="uni",ci=ci);
+//left(-.05 + bd - struct_val(ci, "bthick")) yrot(-90) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
+//}
+//left(bd) yrot(-90) simple_joint_socket(jc=jc, jh=jh, jw=jw, jt=jt, tol=jtol);
+//color("Red") {left(bd - struct_val(ci, "bthick")) yrot(-90)  difference() {
+//cyl(d=jh + 2*jtol + 2*jt, h=struct_val(ci, "bthick"), anchor=BOTTOM);
+//down(0.05) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
+//}
+//}
+//
+//fwd(2*get_body_width(ci=ci))
+//union() {
+//square_tube_clamp(clamptype="uni", ci=ci);
+//left(bd) yrot(-90) simple_joint_head(jc=jc, jh=jh, jw=jw, jt=jt, tol=jtol);
+//}
+//}
 
 // // Clamp Structure
 // // ===============
