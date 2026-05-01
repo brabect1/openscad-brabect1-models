@@ -17,7 +17,7 @@
 
 use <square_tube_clamp.scad>
 
-diam=15;
+diam=20;
 len=30;
 tol=1;
 dil=2;
@@ -47,5 +47,58 @@ yrot(90) union() {
     }
 }
 
+//---->>>>
+// extra round tube C clamp experiment
+// -----------------------------------
+$fn = 120;
+
+module round_tube_c_clamp(
+    td=25, // tube diameter
+    cct=3, // clamp thickness,
+    ccw=5, // clamp width
+    cca=280, // clamp arc angle
+    cctol=0.5 // inner diameter tolerance
+) {
+
+    difference() {
+        // outer diameter cylinder
+        cylinder(h=ccw, d=td+2*cct);
+        
+        down(.05) union() {
+            // inner diameter cylinder extrusion (incl. tolerance)
+            cylinder(h=ccw+.1, d=td+tol);
+
+            // pie slice extrusion to yeild "C" shape
+//TODO            rotate([0, 0, cca/2])
+//TODO            render() // make rendering faster
+            color("Red") { pie_slice(radius=cct+td/2 + .1, angle=360-cca, height=ccw+.1); }
+        }
+    }
+    
+    // round edges
+    color("Blue") {
+        for (a = [0, 360-cca]) {
+            rotate([0, 0, a])
+            translate([(cct+td+2*cctol)/2, 0, 0])
+            cylinder(h=ccw, r=cct/2);
+        }
+    }
+}
+
+// pie slice
+// For pie slice code options, see https://3dprinting.stackexchange.com/questions/10638/creating-pie-slice-in-openscad
+module pie_slice(
+    radius,
+    angle,
+    height
+) {
+    linear_extrude(height=height)
+    polygon(points = concat([[0,0]], [for(a=[0:5:angle]) [radius*cos(a), radius*sin(a)]], [[0,0]]));
+}
+
+// use `dil` to place at the same level with the square tube clamp parts
+back(cw+1) up(dil/2) round_tube_c_clamp();
+
+//<<<<----
 
 // vim: expandtab tabstop=4 shiftwidth=4 softtabstop=4 nowrap
