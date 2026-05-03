@@ -313,13 +313,14 @@ function clamp_joint_info(
     jtol, // joint tolerance
     cji // default clamp info structure
 ) = let(
-        cji = is_undef(cji) ? struct_set([], ["cdiam", 6, "hdiam", 16, "hthick", 3, "wthick", 3, "tolerance", 0.5]) : cji,
+        cji = is_undef(cji) ? struct_set([], ["cdiam", 6, "hdiam", 10, "hsdiam", 8, "hthick", 3, "wthick", 3, "tolerance", 0.5]) : cji,
         jc = is_undef(jc) ? struct_val(cji, "cdiam") : jc,
-        jh = is_undef(jh) ? struct_val(cji, "hdiam") : jh,
+        jh = max(is_undef(jh) ? struct_val(cji, "hdiam") : jh, jc+2), // make head exceed connection by at least 1mm (in radius)
+        jhs = max(jc+2, jh/2), // shorter head diameter so it becomes eliptic but make it exceed connection
         jw = is_undef(jw) ? struct_val(cji, "hthick") : jw,
         jt = is_undef(jt) ? struct_val(cji, "wthick") : jt,
         jtol = is_undef(jtol) ? struct_val(cji, "tolerance") : jtol
-    ) struct_set([], ["cdiam", jc, "hdiam", jh, "hthick", jw, "wthick", jt, "tolerance", jtol], grow=true);
+    ) struct_set([], ["cdiam", jc, "hdiam", jh, "hsdiam", jhs, "hthick", jw, "wthick", jt, "tolerance", jtol], grow=true);
 
 
 // Wrapper for clamps with different types of screw openings.
@@ -357,6 +358,7 @@ module square_tube_clamp(
 
     jc = struct_val(cji, "cdiam");
     jh = struct_val(cji, "hdiam");
+    jhs = struct_val(cji, "hsdiam");
     jw = struct_val(cji, "hthick");
     jt = struct_val(cji, "wthick");
     jtol = struct_val(cji, "tolerance");
@@ -384,7 +386,7 @@ module square_tube_clamp(
             left(bd) yrot(-90) simple_joint_head(cji=cji);
         } else if (jointtype == "socket") {
             left(bd) yrot(-90) simple_joint_socket(cji=cji);
-            color("Red") {
+            color("Cyan") {
                 left(bd - struct_val(ci, "bthick")) yrot(-90)  difference() {
                     cyl(d=jh + 2*jtol + 2*jt, h=struct_val(ci, "bthick"), anchor=BOTTOM);
                     down(0.05) cyl(d=jh+jtol, h=struct_val(ci, "bthick")+0.1, anchor=BOTTOM);
@@ -498,13 +500,14 @@ module simple_joint_head(
 
     jc = struct_val(cji, "cdiam");
     jh = struct_val(cji, "hdiam");
+    jhs = struct_val(cji, "hsdiam");
     jw = struct_val(cji, "hthick");
     jt = struct_val(cji, "wthick");
     jtol = struct_val(cji, "tolerance");
 
     cyl(h=jt+jtol, d=jc, anchor=BOTTOM)
     attach(TOP)
-    color("Red") { yscale(0.5) cyl(h=jw, d=jh, rounding=0.2, anchor=BOTTOM); };
+    color("Red") { yscale(jhs/jh) cyl(h=jw, d=jh, rounding=0.2, anchor=BOTTOM); };
 }
 
 
@@ -522,6 +525,7 @@ module simple_joint_socket(
 
     jc = struct_val(cji, "cdiam");
     jh = struct_val(cji, "hdiam");
+    jhs = struct_val(cji, "hsdiam");
     jw = struct_val(cji, "hthick");
     jt = struct_val(cji, "wthick");
     jtol = struct_val(cji, "tolerance");
@@ -535,7 +539,7 @@ module simple_joint_socket(
         up(jw+jtol/2) cyl(h=jt+jtol, d=jc+jtol, anchor=BOTTOM);
         down(jtol/2) cyl(h=z+jtol-jt, d=jh+jtol, anchor=BOTTOM);
         color("Blue") { up(jw+jtol/2) left(w/4+jtol/2) cuboid([w/2+jtol, jc+jtol, jt+jtol], anchor=BOTTOM); }
-        color("Red") { down(jtol) left(w/4+jtol/2) cuboid([w/2+jtol, jh/2+jtol, z-jt+jtol], anchor=BOTTOM); }
+        color("Green") { down(jtol) left(w/4+jtol/2) cuboid([w/2+jtol, jhs+jtol, z-jt+jtol], anchor=BOTTOM); }
     }
 }
 

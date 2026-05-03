@@ -30,7 +30,7 @@ bw = get_body_width(ci=ci);
 cw = get_clamp_width(ci=ci);
 
 jc = 6; // joint connect diameter
-jh = 16; // joint header diameter
+jh = 12; // joint header diameter
 jw = 3; // joint head width
 jt = 3; // joint wall thickness
 jtol = 0.5; // joint tolerance
