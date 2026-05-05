@@ -15,12 +15,15 @@
 // Creates structures clamp structures for printing
 // ================================================
 
+include <BOSL2/std.scad>
+include <BOSL2/structs.scad>
+
 use <square_tube_clamp.scad>
 
 diam=20;
 len=30;
-tol=1;
-dil=2;
+tol=0.5;
+dil=1;
 ww=11.5;
 
 
@@ -36,16 +39,17 @@ jt = 3; // joint wall thickness
 jtol = 0.5; // joint tolerance
 cji = clamp_joint_info(jc=jc, jh=jh, jw=jw, jt=jt, jtol=jtol);
 
-yrot(90) union() {
+union() {
     union() {
-        square_tube_clamp(clamptype="uni", jointtype="socket", ci=ci, cji=cji);
-        up(len+1) square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
+        xrot(180) square_tube_clamp(clamptype="uni", jointtype="socket", ci=ci, cji=cji);
+        right(5) zrot(180) square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
     }
-    fwd(cw + 1) union() {
+    left(cw + 1) union() {
         square_tube_clamp(clamptype="uni", jointtype="head", ci=ci, cji=cji);
-        up(len+1) square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
+        right(5) zrot(180) square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
     }
 }
+
 
 //---->>>>
 // extra round tube C clamp experiment
@@ -96,9 +100,41 @@ module pie_slice(
     polygon(points = concat([[0,0]], [for(a=[0:5:angle]) [radius*cos(a), radius*sin(a)]], [[0,0]]));
 }
 
-// use `dil` to place at the same level with the square tube clamp parts
-back(cw+1) up(dil/2) round_tube_c_clamp();
+right(2*cw) union() {
+ccw=5;
+td=25;
+cct=3;
+cctol=0.5;
+ccod=td+2*cct;
+square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
+up(ccod/2-len/2) left(bd+ccod/2) union() {
+difference() {
+right(ccod/2) cuboid([ccod, ccw, ccod/2]);
+xrot(90) cylinder(d=td+2*cctol, h=cw+1, center=true);
+right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
+}
+back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp(td=td, cct=cct, ccw=ccw, cctol=cctol);
+}
 
+
+// right(2*cw) union() {
+// ccw=5;
+// td=25;
+// cct=3;
+// cctol=0.5;
+// ccod=td+2*cct;
+// square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
+// up(len/4) left(bd+ccod/2) union() {
+// difference() {
+// down(cct*2.3) right(ccod/2) yrot(25) cuboid([ccod,ccw, ccod], rounding=2);
+// xrot(90) cylinder(d=td+2*cctol, h=cw+1, center=true);
+// right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
+// right(ccod/2) up(ccod/2) cuboid([ccod, ccw+1, ccod]);
+// }
+// back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp(td=td, cct=cct, ccw=ccw, cctol=cctol);
+// }
+
+}
 //<<<<----
 
 // vim: expandtab tabstop=4 shiftwidth=4 softtabstop=4 nowrap
