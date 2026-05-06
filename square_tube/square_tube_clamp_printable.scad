@@ -20,7 +20,7 @@ include <BOSL2/structs.scad>
 
 use <square_tube_clamp.scad>
 
-diam=20;
+diam=25;
 len=30;
 tol=0.5;
 dil=1;
@@ -31,6 +31,7 @@ ci = clamp_info(d=diam, l=len, dilat=dil, tol=tol, ww=ww);
 bd = get_body_depth(ci=ci);
 bw = get_body_width(ci=ci);
 cw = get_clamp_width(ci=ci);
+bt = struct_val(ci, "bthick");
 
 jc = 6; // joint connect diameter
 jh = 12; // joint header diameter
@@ -64,29 +65,45 @@ module round_tube_c_clamp(
     cctol=0.5 // inner diameter tolerance
 ) {
 
-    difference() {
-        // outer diameter cylinder
-        cylinder(h=ccw, d=td+2*cct);
-        
-        down(.05) union() {
-            // inner diameter cylinder extrusion (incl. tolerance)
-            cylinder(h=ccw+.1, d=td+tol);
+difference() {
+    union() {
+        difference() {
+            // outer diameter cylinder
+            cylinder(h=ccw, d=td+2*cct);
 
-            // pie slice extrusion to yeild "C" shape
-//TODO            rotate([0, 0, cca/2])
-//TODO            render() // make rendering faster
-            color("Red") { pie_slice(radius=cct+td/2 + .1, angle=360-cca, height=ccw+.1); }
+            down(.05) union() {
+                // inner diameter cylinder extrusion (incl. tolerance)
+                cylinder(h=ccw+.1, d=td+cctol);
+
+                // pie slice extrusion to yeild "C" shape
+//TODO                rotate([0, 0, cca/2])
+//TODO                render() // make rendering faster
+                color("Red") { pie_slice(radius=cct+td/2 + .1, angle=360-cca, height=ccw+.1); }
+            }
+        }
+        
+        // round edges
+        scale = 2;
+        color("Blue") {
+            for (a = [0, 360-cca]) {
+                rotate([0, 0, a])
+                translate([cct*scale/2 + (td+cctol)/2, 0, 0])
+                xscale(scale) cylinder(h=ccw, r=cct/2);
+            }
         }
     }
-    
-    // round edges
-    color("Blue") {
-        for (a = [0, 360-cca]) {
-            rotate([0, 0, a])
-            translate([(cct+td+2*cctol)/2, 0, 0])
-            cylinder(h=ccw, r=cct/2);
+
+    union() {
+        scale = 2;
+        color("Blue") {
+            for (a = [[0,-15,-45], [360-cca,15,45]]) {
+                rotate([0, 0, a[0]+a[1]])
+                translate([cct*scale*3/4 + (td+cctol)/2, 0, 0])
+                zrot(a[2]) xscale(scale) down(.5) cylinder(h=ccw+1, r=cct/2);
+            }
         }
     }
+}
 }
 
 // pie slice
@@ -100,39 +117,36 @@ module pie_slice(
     polygon(points = concat([[0,0]], [for(a=[0:5:angle]) [radius*cos(a), radius*sin(a)]], [[0,0]]));
 }
 
-right(2*cw) union() {
-ccw=5;
+ccw=8;
 td=25;
-cct=3;
+cct=4;
 cctol=0.5;
 ccod=td+2*cct;
-square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
-up(ccod/2-len/2) left(bd+ccod/2) union() {
-difference() {
-right(ccod/2) cuboid([ccod, ccw, ccod/2]);
-xrot(90) cylinder(d=td+2*cctol, h=cw+1, center=true);
-right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
-}
-back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp(td=td, cct=cct, ccw=ccw, cctol=cctol);
-}
 
 
 // right(2*cw) union() {
-// ccw=5;
-// td=25;
-// cct=3;
-// cctol=0.5;
-// ccod=td+2*cct;
 // square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
-// up(len/4) left(bd+ccod/2) union() {
+// up(ccod/2-len/2) left(bd+ccod/2) union() {
 // difference() {
-// down(cct*2.3) right(ccod/2) yrot(25) cuboid([ccod,ccw, ccod], rounding=2);
+// right(ccod/2) cuboid([ccod, ccw, ccod/2]);
 // xrot(90) cylinder(d=td+2*cctol, h=cw+1, center=true);
 // right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
-// right(ccod/2) up(ccod/2) cuboid([ccod, ccw+1, ccod]);
 // }
 // back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp(td=td, cct=cct, ccw=ccw, cctol=cctol);
 // }
+
+
+right(2*cw) union() {
+square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
+up(len*0.4) left(bd+ccod/2-bt) union() {
+    difference() {
+        down(cct*1.5) right(ccod/2) yrot(25) cuboid([ccod,ccw, ccod], rounding=2);
+        xrot(90) cylinder(d=td+2*cctol, h=cw+1, center=true);
+        right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
+        right(ccod/2) up(ccod/2) cuboid([ccod, ccw+1, ccod]);
+    }
+    back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp(td=td, cct=cct, ccw=ccw, cctol=cctol);
+}
 
 }
 //<<<<----
