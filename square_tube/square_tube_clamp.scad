@@ -17,6 +17,8 @@ include <BOSL2/screws.scad>
 include <BOSL2/structs.scad>
 include <BOSL2/vnf.scad>
 
+use <round_c_clamp.scad>
+
 $fn=32;
 
 // Creates a "clamp_info" structure.
@@ -540,6 +542,59 @@ module simple_joint_socket(
         down(jtol/2) cyl(h=z+jtol-jt, d=jh+jtol, anchor=BOTTOM);
         color("Blue") { up(jw+jtol/2) left(w/4+jtol/2) cuboid([w/2+jtol, jc+jtol, jt+jtol], anchor=BOTTOM); }
         color("Green") { down(jtol) left(w/4+jtol/2) cuboid([w/2+jtol, jhs+jtol, z-jt+jtol], anchor=BOTTOM); }
+    }
+}
+
+
+// creates a square clamp with a round C-clamp (to connect to a round tube)
+module square_tube_clamp_to_round_cclamp(
+    ci, // clamp info
+    d, // diameter
+    l, // length
+    bt, // body thickness of the clamp
+    ww, // clamp "wing" width
+    wt, // clamp "wing" thickness (this is the thickness just for the clamp half being construed)
+    ss, // screw_info specification
+    dilat, // dilataion between the head and nut clamp halves
+    tol, // tolerance (margin by which the clamp exceeds the tube profile)
+    cctd=25, // C-clamp tube diameter
+    cct=3, // C-clamp thickness,
+    ccw=5, // C-clamp width
+    cca=280, // C-clamp arc angle
+    cctol=0.5 // C-clamp inner diameter tolerance
+) {
+    // C-clamp outer diameter
+    ccod=cctd+2*cct;
+
+    // redefine module parameters (to make sure they are all defined and usable)
+    ci = clamp_info(ci=ci, d=d, l=l, bt=bt, ww=ww, wt=wt, ss=ss, dilat=dilat, tol=tol);
+    cw = get_clamp_width(ci=ci);
+    bw = get_body_width(ci=ci);
+    bd = get_body_depth(ci); // computed clamp body depth
+    bt = struct_val(ci, "bthick"); // clamp body thickness
+    l = struct_val(ci, "length");
+
+    // right(2*cw) union() {
+    // square_tube_clamp(clamptype="uni", ci=ci, cji=cji);
+    // up(ccod/2-l/2) left(bd+ccod/2) union() {
+    // difference() {
+    // right(ccod/2) cuboid([ccod, ccw, ccod/2]);
+    // xrot(90) cylinder(d=cctd+2*cctol, h=cw+1, center=true);
+    // right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
+    // }
+    // back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp_hooks(td=cctd, cct=cct, ccw=ccw, cca=cca, cctol=cctol);
+    // }
+
+
+    square_tube_clamp(clamptype="uni", ci=ci);
+    up(l*0.4) left(bd+ccod/2-bt) union() {
+        difference() {
+            down(cct*1.5) right(ccod/2) yrot(25) cuboid([ccod,ccw, ccod], rounding=2);
+            xrot(90) cylinder(d=cctd+2*cctol, h=cw+1, center=true);
+            right(ccod) cuboid([ccod, ccw+1, 2*ccod]);
+            right(ccod/2) up(ccod/2) cuboid([ccod, ccw+1, ccod]);
+        }
+        back(ccw/2) yrot(-90) xrot(90) round_tube_c_clamp_hooks(td=cctd, cct=cct, ccw=ccw, cca=cca, cctol=cctol);
     }
 }
 
